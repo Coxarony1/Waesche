@@ -49,34 +49,6 @@
             }
         }
 
-        const fs = require('fs');
-const path = require('path');
-
-exports.handler = async (event, context) => {
-    try {
-        // Pfad zur CSV innerhalb der Serverless-Funktion
-        const filePath = path.join(__dirname, 'data', 'daten.csv');
-        const csvData = fs.readFileSync(filePath, 'utf8');
-
-        // CSV parsen
-        const parsedData = csvData
-            .split(/\r?\n/)
-            .map(row => row.split(';').map(cell => cell.trim()));
-
-        return {
-            statusCode: 200,
-            body: JSON.stringify(parsedData),
-        };
-    } catch (error) {
-        console.error('Fehler beim Laden der CSV:', error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: 'Fehler beim Laden der CSV-Daten' }),
-        };
-    }
-};
-
-
         const colorMapping = {
             "KTW": "#90EE90",
             "Azubi": "white",
@@ -112,18 +84,18 @@ exports.handler = async (event, context) => {
         }
 
         async function loadData() {
-            try {
-                const response = await fetch('/.netlify/functions/handler'); // Adjust the endpoint if necessary
-                if (!response.ok) {
-                    throw new Error('Fehler beim Abrufen der Daten');
-                }
-                return await response.json();
-            } catch (error) {
-                console.error('Fehler beim Laden der Daten:', error);
-                alert('Fehler beim Laden der Daten.');
-                return null;
-            }
-        }
+    try {
+        // API-Aufruf zu Netlify Function
+        const response = await fetch('/.netlify/functions/getcsvdata');
+        if (!response.ok) throw new Error("Fehler beim Laden der Daten");
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Fehler beim Laden der Daten:", error);
+        document.getElementById('output').innerText = "Fehler beim Laden der Daten.";
+    }
+}
+
 
         async function searchName() {
             const input = document.getElementById('searchInput').value.trim().toLowerCase();
