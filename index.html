@@ -84,18 +84,18 @@
         }
 
         async function loadData() {
-    try {
-        // API-Aufruf zu Netlify Function
-        const response = await fetch('/.netlify/functions/getcsvdata');
-        if (!response.ok) throw new Error("Fehler beim Laden der Daten");
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error("Fehler beim Laden der Daten:", error);
-        document.getElementById('output').innerText = "Fehler beim Laden der Daten.";
-    }
-}
-
+            try {
+                document.getElementById('output').innerText = "Lade Daten..."; // Show loading message
+                const response = await fetch('/.netlify/functions/getcsvdata');
+                if (!response.ok) throw new Error(`Fehler beim Laden der Daten: ${response.statusText}`);
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error("Fehler beim Laden der Daten:", error);
+                document.getElementById('output').innerText = "Fehler beim Laden der Daten. Bitte versuchen Sie es später erneut.";
+                return null; // Return null to indicate failure
+            }
+        }
 
         async function searchName() {
             const input = document.getElementById('searchInput').value.trim().toLowerCase();
@@ -109,6 +109,11 @@
             const ortIndex = header.indexOf("Ort");
             const reiheIndex = header.indexOf("Reihe");
             const arbeitsbereichIndex = header.indexOf("Arbeitsbereich");
+
+            if (nameIndex === -1 || ortIndex === -1 || reiheIndex === -1 || arbeitsbereichIndex === -1) {
+                document.getElementById('output').innerText = "Fehler: CSV-Daten sind ungültig.";
+                return;
+            }
 
             const found = rows.filter(row => fuzzyMatch(input, row[nameIndex] || ""));
 
