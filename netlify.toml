@@ -1,7 +1,13 @@
- # Netlify Build-Anweisungen
+# Netlify Build-Anweisungen
 [build]
-  functions = "netlify/functions"  # Pfad zu den Funktionen
-  publish = "."  # Verzeichnis, wo die index.html liegt
+  # Directory where the build output is located (if applicable)
+  publish = "dist" # Adjust this if your frontend build output is in a different folder
+  # Directory for Netlify functions
+  functions = "netlify/functions"
+
+[functions]
+  # Include additional files or folders required by functions
+  included_files = ["netlify/functions/data/**"]
 
 # Header für die Funktion (CORS & Content-Type)
 [[headers]]
