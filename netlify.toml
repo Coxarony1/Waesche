@@ -1,0 +1,17 @@
+ # Netlify Build-Anweisungen
+[build]
+  functions = "netlify/functions"  # Pfad zu den Funktionen
+  publish = "."  # Verzeichnis, wo die index.html liegt
+
+# Header für die Funktion (CORS & Content-Type)
+[[headers]]
+  for = "/.netlify/functions/getcsvdata"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"  # Erlaubt alle Domains (für Tests)
+    Content-Type = "application/json"  # Sagt dem Browser, es ist JSON-Daten
+
+# Redirects für eine schönere URL (optional)
+[[redirects]]
+  from = "/api/data"
+  to = "/.netlify/functions/getcsvdata"
+  status = 200

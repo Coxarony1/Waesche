@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Namens-Suchtool mit lokaler CSV</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; }
+        input { padding: 10px; width: 200px; margin-right: 10px; }
+        button { padding: 10px 15px; cursor: pointer; }
+        #output { margin-top: 20px; font-weight: bold; white-space: pre-wrap; text-align: left; padding: 0; margin: 0; }
+        .ktw { color: rgb(48, 128, 48); }
+        .azubi { color: white; background-color: black; padding: 2px; }
+        .rtw-schwarz { color: black; font-weight: bold; }
+        .rtw-weiss { color: white; background-color: black; padding: 2px; }
+        .rtw-blau { color: rgb(51, 51, 240); }
+        .rtw-rot { color: rgb(201, 36, 36); }
+        .rtw-gelb { color: #FFCC00; }
+        .default { color: black; }
+        .fach-grid { display: grid; grid-template-columns: repeat(11, 40px); gap: 5px; margin-top: 10px; }
+        .fach { width: 40px; height: 40px; background-color: #ddd; display: flex; align-items: center; justify-content: center; border: 1px solid #aaa; }
+        .fach.active { font-weight: bold; box-shadow: 0 0 5px; }
+    </style>
+</head>
+<body>
+    <h2 id="loginText">Login</h2>
+    <input type="password" id="passwordInput" placeholder="Passwort eingeben..." onkeypress="if(event.key === 'Enter') checkPassword()">
+    <button onclick="checkPassword()">Login</button>
+
+    <div id="searchSection" style="display: none;">
+        <h2>Namens-Suchtool</h2>
+        <input type="text" id="searchInput" placeholder="Name eingeben..." onkeypress="if(event.key === 'Enter') searchName()">
+        <button onclick="searchName()">Suchen</button>
+        <p id="output"></p>
+        <div id="fachGrid" class="fach-grid" style="display: none;"></div>
+    </div>
+
+    <script>
+        const correctPassword = "123";
+
+        function checkPassword() {
+            const enteredPassword = document.getElementById("passwordInput").value;
+            if (enteredPassword === correctPassword) {
+                document.getElementById("searchSection").style.display = "block";
+                document.getElementById("passwordInput").style.display = "none";
+                document.querySelector("button[onclick='checkPassword()']").style.display = "none";
+                document.getElementById("loginText").style.display = "none";
+            } else {
+                alert("Falsches Passwort!");
+            }
+        }
+
+        const fs = require('fs');
+const path = require('path');
+
+exports.handler = async (event, context) => {
+    try {
+        // Pfad zur CSV innerhalb der Serverless-Funktion
+        const filePath = path.join(__dirname, 'data', 'daten.csv');
+        const csvData = fs.readFileSync(filePath, 'utf8');
+
+        // CSV parsen
+        const parsedData = csvData
+            .split(/\r?\n/)
+            .map(row => row.split(';').map(cell => cell.trim()));
+
+        return {
+            statusCode: 200,
+            body: JSON.stringify(parsedData),
+        };
+    } catch (error) {
+        console.error('Fehler beim Laden der CSV:', error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: 'Fehler beim Laden der CSV-Daten' }),
+        };
+    }
+};
+
+
+        const colorMapping = {
+            "KTW": "#90EE90",
+            "Azubi": "white",
+            "RTW Schwarz": "black",
+            "RTW Weiß": "white",
+            "RTW Blau": "#1035AC",
+            "RTW Rot": "#FFA07A",
+            "RTW Gelb": "#FFCC00",
+        };
+
+        function getColorForArea(area) {
+            return colorMapping[area] || "black";
+        }
+
+        function renderFachGrid(row, col, color) {
+            const grid = document.getElementById('fachGrid');
+            grid.style.display = 'grid';
+            grid.innerHTML = '';
+            for (let r = 1; r <= 6; r++) {
+                for (let c = 1; c <= 11; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('fach');
+                    cell.textContent = `${r}-${c}`;
+                    if (r === row && c === col) {
+                        cell.classList.add('active');
+                        const borderColor = color === 'white' ? 'black' : color;
+                        cell.style.borderColor = borderColor;
+                        cell.style.boxShadow = `0 0 5px ${borderColor}`;
+                    }
+                    grid.appendChild(cell);
+                }
+            }
+        }
+
+        async function loadData() {
+            try {
+                const response = await fetch('/.netlify/functions/handler'); // Adjust the endpoint if necessary
+                if (!response.ok) {
+                    throw new Error('Fehler beim Abrufen der Daten');
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Fehler beim Laden der Daten:', error);
+                alert('Fehler beim Laden der Daten.');
+                return null;
+            }
+        }
+
+        async function searchName() {
+            const input = document.getElementById('searchInput').value.trim().toLowerCase();
+            const data = await loadData(); // Fetch data using the new function
+            if (!data || data.length < 2) return;
+
+            const header = data[0];
+            const rows = data.slice(1);
+
+            const nameIndex = header.indexOf("Name");
+            const ortIndex = header.indexOf("Ort");
+            const reiheIndex = header.indexOf("Reihe");
+            const arbeitsbereichIndex = header.indexOf("Arbeitsbereich");
+
+            const found = rows.filter(row => fuzzyMatch(input, row[nameIndex] || ""));
+
+            const preferredLocations = ["fächer im gang", "schrank 1 ktw", "schrank 2 rtw", "kisten auf schrank"];
+            const displayRows = [];
+
+            found.forEach(row => {
+                const fullName = row[nameIndex].toLowerCase();
+                const existingEntry = displayRows.find(entry => entry.name === fullName);
+
+                if (existingEntry) {
+                    if (preferredLocations.includes(row[ortIndex].toLowerCase())) {
+                        existingEntry.row = row;
+                    }
+                } else {
+                    displayRows.push({ name: fullName, row });
+                }
+            });
+
+            document.getElementById('output').innerHTML = displayRows.length
+                ? displayRows.map(entry => {
+                    const row = entry.row;
+                    const color = getColorForArea(row[arbeitsbereichIndex]);
+                    const textShadow = color === 'white' ? '0 0 3px black, 0 0 5px black' : '0px 0px 0px rgba(0,0,0,0.7)';
+                    const outputText = `<p style="color: ${color}; font-weight: bold; text-shadow: ${textShadow}; margin: 0; padding: 0; text-align: left;">
+                        <br>${row[nameIndex]} ist in:<strong> ${row[ortIndex]}</strong>,<br> Reihe: ${row[reiheIndex]}, Arbeitsbereich: ${row[arbeitsbereichIndex]}
+                    </p>`;
+
+                    if (row[ortIndex].toLowerCase() === "fächer im gang") {
+                        const [reihe, position] = row[reiheIndex].split('-').map(Number);
+                        renderFachGrid(reihe, position, color);
+                    } else {
+                        document.getElementById('fachGrid').style.display = 'none';
+                    }
+                    return outputText;
+                }).join('')
+                : "Name nicht gefunden.";
+        }
+    </script>
+</body>
+</html>
